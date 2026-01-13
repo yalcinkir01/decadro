@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Decadron | Onlu Odaklanmış Sosyal Platform</title>
+    <title>Decadro | Onlu Odaklanmış Sosyal Platform</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Roboto, Arial, sans-serif; background-color: #ffffff; margin: 0; display: flex; flex-direction: column; height: 100vh; color: #202124; }
@@ -39,7 +39,7 @@
     </header>
 
     <main>
-        <div class="brand-name">DECADRON</div>
+        <div class="brand-name">DECADRO</div>
 
         <div class="action-buttons">
             <button class="btn" onclick="quickJoin()">Rastgele Bir Deca'ya Gir</button>
@@ -61,7 +61,7 @@
     </main>
 
     <footer>
-        <span>&copy; 2026 Decadron</span>
+        <span>&copy; 2026 Decadro</span>
         <a href="#">Telif Hakları & Etik Kurallar</a>
     </footer>
 
@@ -71,7 +71,7 @@
         const socket = io("http://localhost:3001"); 
 
         socket.on('connect', () => {
-            console.log('Decadron Motoruna Bağlanıldı!');
+            console.log('Decadro Motoruna Bağlanıldı!');
         });
 
         function toggleRooms() {
