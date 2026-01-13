@@ -1,1 +1,187 @@
+// backend/server.js
+const express = require('express');
+const http = require('http');
+const { Server } = require("socket.io");
+const cors = require('cors');
+
+const app = express();
+app.use(cors());
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Allow all for MVP
+    methods: ["GET", "POST"]
+  }
+});
+
+// --- In-Memory State ---
+// Rooms: { [roomId]: { id, name, category, users: [socketId], queue: [socketId], capacity: 10 } }
+const rooms = {};
+// Users: { [socketId]: { id, username, currentRoom, role } }
+const users = {};
+
+// Constants
+const DECA_CAPACITY = 10;
+const AUTO_EXPAND_TRIGGER = 5; // Queue size to expand
+const MAX_CAPACITY = 20;
+
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
+  // Initialize user
+  users[socket.id] = { id: socket.id, username: `User-${socket.id.substr(0, 4)}`, currentRoom: null, role: 'none' };
+
+  // --- Events ---
+
+  // 1. Create Room
+  socket.on('create_room', ({ name, category }) => {
+    const roomId = `room-${Date.now()}`;
+    rooms[roomId] = {
+      id: roomId,
+      name: name || `Deca ${roomId}`,
+      category: category || 'general',
+      users: [],
+      queue: [],
+      capacity: DECA_CAPACITY
+    };
+    
+    // Auto-join creator
+    joinRoom(socket, roomId);
+    socket.emit('room_created', { roomId });
+  });
+
+  // 2. List Rooms
+  socket.on('list_rooms', () => {
+    const roomList = Object.values(rooms).map(r => ({
+      id: r.id,
+      name: r.name,
+      category: r.category,
+      count: r.users.length,
+      queueCount: r.queue.length,
+      capacity: r.capacity
+    }));
+    socket.emit('rooms_list', roomList);
+  });
+
+  // 3. Join Room
+  socket.on('join_room', ({ roomId }) => {
+    joinRoom(socket, roomId);
+  });
+
+  // 4. Leave Room
+  socket.on('leave_room', () => {
+    leaveRoom(socket);
+  });
+
+  // 5. Send Message (Signal) - simplified for MVP
+  socket.on('send_message', ({ message }) => {
+    const user = users[socket.id];
+    if (user && user.currentRoom) {
+      io.to(user.currentRoom).emit('receive_message', {
+        user: user.username,
+        text: message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  socket.on('disconnect', () => {
+    leaveRoom(socket);
+    delete users[socket.id];
+    console.log('User disconnected:', socket.id);
+  });
+});
+
+// --- Helper Functions ---
+
+function joinRoom(socket, roomId) {
+  const room = rooms[roomId];
+  const user = users[socket.id];
+
+  if (!room || !user) return;
+
+  // Leave current room if any
+  if (user.currentRoom) {
+    leaveRoom(socket);
+  }
+
+  // Check capacity
+  if (room.users.length < room.capacity) {
+    // Join as Active Member
+    room.users.push(socket.id);
+    user.role = 'speaker';
+    user.currentRoom = roomId;
+    socket.join(roomId);
+    
+    // Broadcast update
+    io.to(roomId).emit('room_update', getRoomState(roomId));
+    socket.emit('joined_room', { roomId, role: 'speaker' });
+  } else {
+    // Join Queue
+    room.queue.push(socket.id);
+    user.role = 'listener';
+    user.currentRoom = roomId;
+    socket.join(roomId); // Listeners also in the room channel for updates
+    
+    socket.emit('joined_queue', { roomId, position: room.queue.length });
+    
+    // Check Auto-Expansion
+    if (room.capacity === DECA_CAPACITY && room.queue.length >= AUTO_EXPAND_TRIGGER) {
+      room.capacity = MAX_CAPACITY;
+      // Move queue to users
+      while (room.users.length < room.capacity && room.queue.length > 0) {
+        const nextSocketId = room.queue.shift();
+        room.users.push(nextSocketId);
+        if (users[nextSocketId]) users[nextSocketId].role = 'speaker';
+        io.to(nextSocketId).emit('promoted_to_speaker');
+      }
+      io.to(roomId).emit('room_expanded', { newCapacity: MAX_CAPACITY });
+    }
+  }
+}
+
+function leaveRoom(socket) {
+  const user = users[socket.id];
+  if (!user || !user.currentRoom) return;
+
+  const roomId = user.currentRoom;
+  const room = rooms[roomId];
+  
+  if (room) {
+    // API: Remove from users or queue
+    room.users = room.users.filter(id => id !== socket.id);
+    room.queue = room.queue.filter(id => id !== socket.id);
+    
+    // Fill from queue if space available
+    if (room.users.length < room.capacity && room.queue.length > 0) {
+      const nextSocketId = room.queue.shift();
+      room.users.push(nextSocketId);
+      if (users[nextSocketId]) users[nextSocketId].role = 'speaker';
+      io.to(nextSocketId).emit('promoted_to_speaker');
+    }
+
+    io.to(roomId).emit('room_update', getRoomState(roomId));
+  }
+  
+  user.currentRoom = null;
+  user.role = 'none';
+  socket.leave(roomId);
+}
+
+function getRoomState(roomId) {
+  const room = rooms[roomId];
+  if (!room) return null;
+  return {
+    id: room.id,
+    users: room.users.map(id => users[id] ? users[id].username : 'Unknown'),
+    queueSize: room.queue.length,
+    capacity: room.capacity
+  };
+}
+
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, () => {
+  console.log(`Decadron Backend running on port ${PORT}`);
+});
 
