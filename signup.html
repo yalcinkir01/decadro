@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decadro'ya Katıl</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #ffffff; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .signup-container { width: 100%; max-width: 350px; text-align: center; padding: 20px; }
+        .brand-name { font-size: 32px; font-weight: 300; color: #004d4d; letter-spacing: 3px; margin-bottom: 30px; }
+        input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #dadce0; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
+        input:focus { outline: none; border: 2px solid #004d4d; }
+        .btn-signup { width: 100%; padding: 12px; background-color: #004d4d; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .btn-signup:hover { background-color: #003333; }
+        .footer-links { margin-top: 20px; font-size: 14px; color: #5f6368; }
+        .footer-links a { color: #004d4d; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+    <div class="signup-container">
+        <div class="brand-name">DECADRO</div>
+        <form id="signupForm">
+            <input type="text" placeholder="Kullanıcı Adı" required>
+            <input type="email" placeholder="E-posta" required>
+            <input type="password" placeholder="Şifre" required>
+            <button type="submit" class="btn-signup">Hesabını Oluştur</button>
+        </form>
+        <div class="footer-links">
+            Zaten üye misin? <a href="login.html">Giriş Yap</a>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('signupForm').onsubmit = function(e) {
+            e.preventDefault();
+            alert('Decadro dünyasına hoş geldin! Kaydın başarıyla alındı.');
+            window.location.href = 'index.html'; // Kayıttan sonra ana sayfaya döner
+        };
+    </script>
+
+</body>
+</html>
